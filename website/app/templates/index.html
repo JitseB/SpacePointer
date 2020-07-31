@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <title>Space Pointer</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/bootstrap.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/master.css') }}">
+  </head>
+  <body>
+    <div class="container">
+      <div class="text-center py-3">
+        <h1 class="m-0 display-1">Space Pointer</h1>
+        <p class="m-0 text-muted">By Jitse Boonstra (Aug. 2020)</p>
+      </div>
+      <hr class="my-2">
+      {% if hor_error %}
+      <div class="alert alert-warning mt-3 mb-2" role="alert">
+        <span class="font-weight-bold">WARNING</span> Object doesn't come above horizon.
+      </div>
+      {% endif %}
+      <h2 id="select-object" class="my-2 py-2">Currently tracking: <span class="font-italic">{{ current_object.name }}</span></h2>
+      <form class="my-2 py-2" method="POST" action="/set-object">
+        <div class="form-group">
+          <label for="object-selector">Select other object to track:</label>
+          <select id="object-selector" class="form-control" name="object-selector">
+            {% for object in (standard_objects + custom_objects) %}
+            <option required value="{{ object.name }}" {% if object.name == current_object.name %} selected {% endif %}>{{ object.name }} {% if object.name == current_object.name %} (currently selected) {% endif %}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <button type="submit" class="btn btn-primary">Select Object</button>
+      </form>
+      <hr class="my-2">
+      <h2 id="change-location" class="my-2 py-2">Change location of the machine</h2>
+      <form class="my-2 py-2" method="POST" action="/set-gps">
+        <div class="form-group">
+          <label for="gps">New location: <span class="text-muted">(format: latitude longitude altitude)</span></label>
+          <input required class="form-control" name="gps" value="{{ gps }}">
+        </div>
+        <button type="submit" class="btn btn-primary">Change Location</button>
+      </form>
+      <hr class="my-2">
+      <div class="float-right my-2 py-2"><a href="#">Information on object data format</a></div>
+      <h2 id="add-object" class="my-2 py-2">Add custom object</h2>
+      <div id="name-error" class="alert alert-danger mt-3 mb-2" role="alert">
+        <span class="font-weight-bold">ERROR</span> An object with that name already exists!
+      </div>
+      <form class="my-2 py-2" method="POST" action="/add-object" onsubmit="return validate();">
+        <div class="form-group">
+          <label for="object-name">Object name:</label>
+          <input required id="add-object-name" class="form-control" name="object-name" placeholder="Type here">
+        </div>
+          <div class="form-group">
+            <label for="object-data">Object data:</label>
+            <textarea required class="form-control" name="object-data" rows=3 placeholder="Type here"></textarea>
+          </div>
+        <button type="submit" class="btn btn-primary">Add Object</button>
+      </form>
+      {% if custom_objects|length > 0 %}
+      <h2 id="previously-added" class="my-2 py-2">Previously added custom objects</h2>
+      <table class="table mt-2 mb-5 py-2">
+        <thead>
+          <tr>
+            <th scope="col">No.</th>
+            <th scope="col">Name</th>
+            <th scope="col">Data</th>
+            <th scope="col">Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for object in custom_objects %}
+          <tr>
+            <th scope="row">{{ loop.index }}</th>
+            <td>{{ object.name }}</td>
+            <td style ="word-break:break-all;"><samp>{{ object.data }}</samp></td>
+            <td class="align-middle">
+            <form class="" method="POST" action="/del-object">
+              <button type="submit" class="btn btn-danger" value="{{ loop.index }}" name="object-delete">Delete</button>
+            </form>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% endif %}
+    </div>
+    <script type="text/javascript">
+        /**
+       * sends a request to the specified url from a form. this will change the window location.
+       * @param {string} path the path to send the post request to
+       * @param {object} params the paramiters to add to the url
+       * @param {string} [method=post] the method to use on the form
+       (Thank you: https://stackoverflow.com/questions/133925/javascript-post-request-like-a-form-submit)
+       */
+
+      function post(path, params, method='post') {
+
+        // The rest of this code assumes you are not using a library.
+        // It can be made less wordy if you use one.
+        const form = document.createElement('form');
+        form.method = method;
+        form.action = path;
+
+        for (const key in params) {
+          if (params.hasOwnProperty(key)) {
+            const hiddenField = document.createElement('input');
+            hiddenField.type = 'hidden';
+            hiddenField.name = key;
+            hiddenField.value = params[key];
+
+            form.appendChild(hiddenField);
+          }
+        }
+
+        document.body.appendChild(form);
+        form.submit();
+      }
+
+      function fixTime() {
+        var time = prompt("Please give the current CE(S)T time (MM/DD/YYYY HH:mm)");
+        while (time == "" || time == undefined) {
+          time = prompt("Please give the current CE(S)T time (MM/DD/YYYY HH:mm)");
+        }
+        post('/fix-time', {"time": time});
+      }
+
+      function validate() {
+        var name = document.getElementById("add-object-name").value;
+        var select = document.getElementById("object-selector");
+        var nameError = document.getElementById("name-error");
+        for (var i = 0; i < select.options.length; i++) {
+          var text = select.options[i].text;
+          if (name == text) {
+            nameError.style.setProperty("display", "block");
+            return false;
+          }
+        }
+        return true;
+      }
+
+      var time = "{{ time }}";
+      if (time == "None") {
+        fixTime();
+      }
+    </script>
+  </body>
+</html>
